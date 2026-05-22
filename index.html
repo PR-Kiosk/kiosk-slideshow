@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>키오스크 슬라이드쇼</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%;
+      background: #000;
+      overflow: hidden;
+      font-family: sans-serif;
+    }
+    .slide {
+      position: absolute;
+      inset: 0;
+      width: 100%; height: 100%;
+      object-fit: contain;
+      opacity: 0;
+      transition: opacity 1.2s ease-in-out;
+    }
+    .slide.active { opacity: 1; }
+    #progress-bar {
+      position: fixed;
+      bottom: 0; left: 0;
+      height: 3px;
+      background: rgba(255,255,255,0.6);
+      width: 0%;
+      transition: width linear;
+      z-index: 10;
+    }
+    #no-images {
+      display: none;
+      position: fixed;
+      inset: 0;
+      color: #fff;
+      font-size: 1.4rem;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      line-height: 2;
+    }
+    #admin-btn {
+      position: fixed;
+      bottom: 20px; right: 20px;
+      width: 44px; height: 44px;
+      background: rgba(255,255,255,0.15);
+      border: 1.5px solid rgba(255,255,255,0.3);
+      border-radius: 50%;
+      font-size: 1.2rem;
+      cursor: pointer;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(6px);
+      transition: background 0.2s;
+    }
+    #admin-btn:hover { background: rgba(255,255,255,0.3); }
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: #1e1e2e;
+      border-radius: 16px;
+      padding: 36px 32px;
+      width: 360px;
+      color: #cdd6f4;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+    }
+    .modal h2 { font-size: 1.2rem; margin-bottom: 20px; color: #cba6f7; }
+    .modal input[type="password"] {
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: 1px solid #45475a;
+      background: #313244;
+      color: #cdd6f4;
+      font-size: 1rem;
+      margin-bottom: 14px;
+      outline: none;
+    }
+    .modal input:focus { border-color: #cba6f7; }
+    .btn {
+      display: inline-block;
+      padding: 10px 20px;
+      border-radius: 8px;
+      border: none;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn-primary { background: #cba6f7; color: #1e1e2e; font-weight: 700; }
+    .btn-danger  { background: #f38ba8; color: #1e1e2e; font-weight: 700; }
+    .btn-ghost   { background: transparent; color: #6c7086; border: 1px solid #45475a; }
+    .error-msg { color: #f38ba8; font-size: 0.85rem; margin-bottom: 10px; min-height: 18px; }
+    #admin-panel .modal { width: 500px; max-height: 85vh; overflow-y: auto; }
+    .image-list { margin: 16px 0; }
+    .image-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid #313244;
+    }
+    .image-item img {
+      width: 60px; height: 60px;
+      object-fit: cover;
+      border-radius: 6px;
+      background: #313244;
+    }
+    .image-item .img-name {
+      flex: 1;
+      font-size: 0.9rem;
+      color: #a6adc8;
+      word-break: break-all;
+    }
+    .upload-area {
+      border: 2px dashed #45475a;
+      border-radius: 10px;
+      padding: 20px;
+      text-align: center;
+      margin: 16px 0;
+      color: #6c7086;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .upload-area:hover { border-color: #cba6f7; color: #cba6f7; }
+    .upload-area input { display: none; }
+    .row { display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px; }
+    .notice {
+      background: #313244;
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-size: 0.82rem;
+      color: #a6adc8;
+      line-height: 1.6;
+      margin-top: 14px;
+    }
+    .notice strong { color: #cba6f7; }
+    .uploading-msg {
+      color: #a6e3a1;
+      font-size: 0.85rem;
+      margin: 8px 0;
+      min-height: 20px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div id="progress-bar"></div>
+  <div id="no-images">등록된 이미지가 없습니다.<br>우하단 버튼을 눌러 관리자 페이지에 접속하세요.</div>
+  <button id="admin-btn" title="관리자">⚙️</button>
+
+  <div class="modal-overlay" id="login-modal">
+    <div class="modal">
+      <h2>🔐 관리자 로그인</h2>
+      <input type="password" id="pw-input" placeholder="비밀번호 입력" />
+      <div class="error-msg" id="pw-error"></div>
+      <div class="row">
+        <button class="btn btn-ghost" onclick="closeLogin()">취소</button>
+        <button class="btn btn-primary" onclick="doLogin()">확인</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="admin-panel">
+    <div class="modal">
+      <h2>🖼 슬라이드쇼 관리</h2>
+      <div class="upload-area" onclick="document.getElementById('file-input').click()">
+        📁 클릭하여 이미지 추가 (여러 장 동시 가능)<br>
+        <input type="file" id="file-input" accept="image/*" multiple onchange="handleUpload(event)"/>
+      </div>
+      <div class="uploading-msg" id="uploading-msg"></div>
+      <div class="image-list" id="image-list"></div>
+      <div class="notice">
+        <strong>📌 안내</strong><br>
+        • 이미지는 Cloudinary 서버에 저장됩니다.<br>
+        • 이미지 목록은 Supabase에 저장되어 어떤 기기에서든 동일하게 표시됩니다.<br>
+        • 담당자 PC에서 추가/삭제하면 키오스크에 자동 반영됩니다.
+      </div>
+      <div class="row" style="margin-top:20px">
+        <button class="btn btn-ghost" onclick="closeAdmin()">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // =============================================
+    // ★ 아래 4가지를 본인 값으로 바꾸세요 ★
+    const SUPABASE_URL  = "https:// poesardhuqyzyognuxtp.supabase.co";   // 예: https://xcojtepudgysulyztunn.supabase.co
+    const SUPABASE_KEY  = "sb_publishable_wtkVu9y7tt09n_xHf0hVJw_DaDOWKpN";   // Publishable key
+    const CLOUD_NAME    = "dtsdh9kbp";      // Cloudinary cloud name (dnme4st3h)
+    const ADMIN_PASSWORD = "044550";       // 관리자 비밀번호
+    // =============================================
+
+    const UPLOAD_PRESET = "kiosk_upload";
+    const INTERVAL = 8000;
+
+    let images = [];
+    let current = 0;
+    let timer = null;
+    let slideEls = [];
+
+    /* ── Supabase에서 이미지 목록 불러오기 ── */
+    async function fetchImages() {
+      try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/images?select=*&order=created_at.asc`, {
+          headers: {
+            "apikey": SUPABASE_KEY,
+            "Authorization": `Bearer ${SUPABASE_KEY}`
+          }
+        });
+        const data = await res.json();
+        images = Array.isArray(data) ? data : [];
+      } catch(e) { images = []; }
+    }
+
+    /* ── 슬라이드쇼 렌더 ── */
+    function renderSlideshow() {
+      slideEls.forEach(el => el.remove());
+      slideEls = [];
+      clearInterval(timer);
+
+      const noImg = document.getElementById("no-images");
+      if (images.length === 0) {
+        noImg.style.display = "flex";
+        document.getElementById("progress-bar").style.width = "0";
+        return;
+      }
+      noImg.style.display = "none";
+
+      images.forEach(img => {
+        const el = document.createElement("img");
+        el.className = "slide";
+        el.src = img.url;
+        el.alt = img.name;
+        el.draggable = false;
+        document.body.insertBefore(el, document.getElementById("progress-bar"));
+        slideEls.push(el);
+      });
+
+      current = 0;
+      showSlide(0);
+      if (images.length > 1) {
+        timer = setInterval(() => {
+          current = (current + 1) % images.length;
+          showSlide(current);
+        }, INTERVAL);
+      }
+    }
+
+    const progressBar = document.getElementById("progress-bar");
+
+    function showSlide(index) {
+      slideEls.forEach(el => el.classList.remove("active"));
+      if (slideEls[index]) slideEls[index].classList.add("active");
+      progressBar.style.transition = "none";
+      progressBar.style.width = "0%";
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        progressBar.style.transition = `width ${INTERVAL}ms linear`;
+        progressBar.style.width = "100%";
+      }));
+    }
+
+    /* ── 로그인 ── */
+    document.getElementById("admin-btn").addEventListener("click", () => {
+      document.getElementById("login-modal").classList.add("open");
+      document.getElementById("pw-input").value = "";
+      document.getElementById("pw-error").textContent = "";
+      setTimeout(() => document.getElementById("pw-input").focus(), 100);
+    });
+
+    document.getElementById("pw-input").addEventListener("keydown", e => {
+      if (e.key === "Enter") doLogin();
+    });
+
+    function doLogin() {
+      const val = document.getElementById("pw-input").value;
+      if (val === ADMIN_PASSWORD) {
+        closeLogin();
+        openAdmin();
+      } else {
+        document.getElementById("pw-error").textContent = "비밀번호가 틀렸습니다.";
+        document.getElementById("pw-input").value = "";
+      }
+    }
+
+    function closeLogin() {
+      document.getElementById("login-modal").classList.remove("open");
+    }
+
+    /* ── 관리자 패널 ── */
+    async function openAdmin() {
+      document.getElementById("admin-panel").classList.add("open");
+      document.getElementById("image-list").innerHTML = '<p style="color:#6c7086;font-size:0.9rem;padding:10px 0">불러오는 중...</p>';
+      await fetchImages();
+      renderImageList();
+    }
+
+    function closeAdmin() {
+      document.getElementById("admin-panel").classList.remove("open");
+      fetchImages().then(renderSlideshow);
+    }
+
+    function renderImageList() {
+      const list = document.getElementById("image-list");
+      list.innerHTML = "";
+      if (images.length === 0) {
+        list.innerHTML = '<p style="color:#6c7086;font-size:0.9rem;padding:10px 0">등록된 이미지가 없습니다.</p>';
+        return;
+      }
+      images.forEach((img, i) => {
+        const item = document.createElement("div");
+        item.className = "image-item";
+        item.innerHTML = `
+          <img src="${img.url}" alt="${img.name}"/>
+          <span class="img-name">${img.name}</span>
+          <button class="btn btn-danger" onclick="deleteImage(${img.id})">삭제</button>
+        `;
+        list.appendChild(item);
+      });
+    }
+
+    /* ── 이미지 삭제 ── */
+    async function deleteImage(id) {
+      const img = images.find(i => i.id === id);
+      if (!confirm((img ? img.name : "이 이미지") + " 을(를) 삭제할까요?")) return;
+      try {
+        await fetch(`${SUPABASE_URL}/rest/v1/images?id=eq.${id}`, {
+          method: "DELETE",
+          headers: {
+            "apikey": SUPABASE_KEY,
+            "Authorization": `Bearer ${SUPABASE_KEY}`
+          }
+        });
+        await fetchImages();
+        renderImageList();
+      } catch(e) {
+        alert("삭제 중 오류가 발생했습니다.");
+      }
+    }
+
+    /* ── 이미지 업로드 ── */
+    async function handleUpload(event) {
+      const files = Array.from(event.target.files);
+      const msg = document.getElementById("uploading-msg");
+      msg.textContent = `업로드 중... (0/${files.length})`;
+
+      let done = 0;
+      for (const file of files) {
+        // 1. Cloudinary에 이미지 업로드
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("upload_preset", UPLOAD_PRESET);
+        formData.append("folder", "kiosk");
+
+        try {
+          const cloudRes = await fetch(
+            `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
+            { method: "POST", body: formData }
+          );
+          const cloudData = await cloudRes.json();
+
+          if (!cloudData.secure_url) {
+            alert(file.name + " 업로드 실패: " + (cloudData.error?.message || "알 수 없는 오류"));
+            continue;
+          }
+
+          // 2. Supabase에 URL 저장
+          await fetch(`${SUPABASE_URL}/rest/v1/images`, {
+            method: "POST",
+            headers: {
+              "apikey": SUPABASE_KEY,
+              "Authorization": `Bearer ${SUPABASE_KEY}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ name: file.name, url: cloudData.secure_url })
+          });
+
+        } catch(e) {
+          alert(file.name + " 처리 중 오류 발생");
+        }
+
+        done++;
+        msg.textContent = `업로드 중... (${done}/${files.length})`;
+      }
+
+      msg.textContent = "✅ 업로드 완료!";
+      setTimeout(() => { msg.textContent = ""; }, 2000);
+      await fetchImages();
+      renderImageList();
+      event.target.value = "";
+    }
+
+    /* ── 초기 실행 ── */
+    fetchImages().then(renderSlideshow);
+
+    // 5분마다 자동 새로고침
+    setInterval(() => {
+      fetchImages().then(renderSlideshow);
+    }, 5 * 60 * 1000);
+  </script>
+</body>
+</html>
