@@ -59,6 +59,567 @@
     }
     #admin-btn:hover { background: rgba(255,255,255,0.3); }
 
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: #1e1e2e;
+      border-radius: 16px;
+      padding: 32px 28px;
+      width: 360px;
+      color: #cdd6f4;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+    }
+    .modal h2 { font-size: 1.15rem; margin-bottom: 18px; color: #cba6f7; }
+    .modal input[type="password"] {
+      width: 100%; padding: 10px 14px;
+      border-radius: 8px; border: 1px solid #45475a;
+      background: #313244; color: #cdd6f4;
+      font-size: 1rem; margin-bottom: 12px; outline: none;
+    }
+    .modal input:focus { border-color: #cba6f7; }
+
+    #admin-panel .modal {
+      width: 560px;
+      max-height: 88vh;
+      overflow-y: auto;
+      padding: 28px 24px;
+    }
+
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 8px 16px; border-radius: 8px; border: none;
+      font-size: 0.9rem; cursor: pointer; transition: opacity 0.2s;
+      gap: 4px;
+    }
+    .btn:hover { opacity: 0.82; }
+    .btn-primary { background: #cba6f7; color: #1e1e2e; font-weight: 700; }
+    .btn-danger  { background: #f38ba8; color: #1e1e2e; font-weight: 700; }
+    .btn-ghost   { background: transparent; color: #6c7086; border: 1px solid #45475a; }
+    .btn-sm { padding: 5px 10px; font-size: 0.8rem; }
+
+    .error-msg { color: #f38ba8; font-size: 0.85rem; margin-bottom: 10px; min-height: 18px; }
+    .row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; }
+
+    .upload-area {
+      border: 2px dashed #45475a; border-radius: 10px;
+      padding: 18px; text-align: center; margin: 14px 0;
+      color: #6c7086; font-size: 0.88rem; cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .upload-area:hover { border-color: #cba6f7; color: #cba6f7; }
+    .upload-area input { display: none; }
+
+    .uploading-msg { color: #a6e3a1; font-size: 0.85rem; margin: 6px 0; min-height: 20px; text-align: center; }
+
+    .image-list { margin: 12px 0; }
+    .image-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 8px; border-bottom: 1px solid #313244;
+      border-radius: 6px; transition: background 0.15s;
+      cursor: grab;
+    }
+    .image-item:active { cursor: grabbing; }
+    .image-item.dragging { opacity: 0.4; background: #313244; }
+    .image-item.drag-over { background: #45475a; border-color: #cba6f7; }
+
+    .drag-handle {
+      color: #585b70; font-size: 1.1rem; cursor: grab; user-select: none;
+      padding: 0 4px; flex-shrink: 0;
+    }
+    .image-item img {
+      width: 52px; height: 52px; object-fit: cover;
+      border-radius: 6px; background: #313244; flex-shrink: 0;
+    }
+    .image-info { flex: 1; min-width: 0; }
+    .image-name {
+      font-size: 0.85rem; color: #cdd6f4;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .image-dates { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+    .date-field { display: flex; flex-direction: column; gap: 2px; }
+    .date-label { font-size: 0.7rem; color: #6c7086; }
+    .date-input {
+      padding: 4px 8px; border-radius: 6px;
+      border: 1px solid #45475a; background: #313244;
+      color: #cdd6f4; font-size: 0.78rem; outline: none;
+      width: 130px;
+    }
+    .date-input:focus { border-color: #cba6f7; }
+
+    .status-badge {
+      font-size: 0.7rem; padding: 2px 7px; border-radius: 20px;
+      font-weight: 600; white-space: nowrap; flex-shrink: 0;
+    }
+    .status-active   { background: #a6e3a1; color: #1e1e2e; }
+    .status-pending  { background: #f9e2af; color: #1e1e2e; }
+    .status-expired  { background: #585b70; color: #cdd6f4; }
+    .status-nodate   { background: #313244; color: #a6adc8; }
+
+    .item-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+    .notice {
+      background: #313244; border-radius: 8px;
+      padding: 10px 14px; font-size: 0.8rem; color: #a6adc8;
+      line-height: 1.6; margin-top: 12px;
+    }
+    .notice strong { color: #cba6f7; }
+
+    .section-title {
+      font-size: 0.8rem; color: #6c7086; margin: 14px 0 4px;
+      text-transform: uppercase; letter-spacing: 0.06em;
+    }
+  </style>
+</head>
+<body>
+  <div id="progress-bar"></div>
+  <div id="no-images">등록된 이미지가 없습니다.<br>우하단 버튼을 눌러 관리자 페이지에 접속하세요.</div>
+  <button id="admin-btn" title="관리자">⚙️</button>
+
+  <div class="modal-overlay" id="login-modal">
+    <div class="modal">
+      <h2>🔐 관리자 로그인</h2>
+      <input type="password" id="pw-input" placeholder="비밀번호 입력"/>
+      <div class="error-msg" id="pw-error"></div>
+      <div class="row">
+        <button class="btn btn-ghost" onclick="closeLogin()">취소</button>
+        <button class="btn btn-primary" onclick="doLogin()">확인</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="admin-panel">
+    <div class="modal">
+      <h2>🖼 슬라이드쇼 관리</h2>
+
+      <div class="upload-area" onclick="document.getElementById('file-input').click()">
+        📁 클릭하여 이미지 추가 (여러 장 동시 가능)
+        <input type="file" id="file-input" accept="image/*" multiple onchange="handleUpload(event)"/>
+      </div>
+      <div class="uploading-msg" id="uploading-msg"></div>
+
+      <div class="section-title">등록된 이미지 <span id="img-count"></span> · 드래그로 순서 변경</div>
+      <div class="image-list" id="image-list"></div>
+
+      <div class="notice">
+        <strong>📌 안내</strong><br>
+        • 드래그(☰)로 이미지 순서를 변경할 수 있습니다.<br>
+        • 게시 시작일/종료일을 설정하면 해당 기간에만 표시됩니다.<br>
+        • 종료일을 비워두면 무기한 게시됩니다.<br>
+        • 변경사항은 저장 버튼을 눌러야 반영됩니다.
+      </div>
+
+      <div class="row" style="margin-top:16px">
+        <button class="btn btn-ghost" onclick="closeAdmin()">닫기</button>
+        <button class="btn btn-primary" onclick="saveAll()">💾 저장</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // =============================================
+    // ★ 아래 4가지를 본인 값으로 바꾸세요 ★
+    const SUPABASE_URL   = "https:// poesardhuqyzyognuxtp.supabase.co";
+    const SUPABASE_KEY   = "sb_publishable_5HD4hUj80f9j7JGtZXPKAA_MoBvmtRF";
+    const CLOUD_NAME     = "dtsdh9kbp";
+    const ADMIN_PASSWORD = "044550";
+    // =============================================
+
+    const UPLOAD_PRESET = "kiosk_upload";
+    const INTERVAL = 8000;
+    // ★ 메모리 누수 수정: 자동 새로고침 주기를 30분으로 설정
+    // (5분마다 이미지를 새로 fetch하되, DOM 재생성은 변경 있을 때만)
+    const REFRESH_INTERVAL = 5 * 60 * 1000;
+    // ★ 12시간마다 페이지 자체를 새로고침해서 메모리 완전 초기화
+    const PAGE_RELOAD_INTERVAL = 12 * 60 * 60 * 1000;
+
+    let images = [];
+    let current = 0;
+    let timer = null;
+    let slideEls = [];
+    let dragSrcIndex = null;
+    let lastImageIds = ""; // 이미지 변경 감지용
+
+    /* ── 날짜 유틸 ── */
+    function today() {
+      return new Date().toISOString().slice(0, 10);
+    }
+    function getStatus(img) {
+      const t = today();
+      if (!img.start_date && !img.end_date) return "nodate";
+      if (img.start_date && img.start_date > t) return "pending";
+      if (img.end_date && img.end_date < t) return "expired";
+      return "active";
+    }
+    function statusLabel(s) {
+      return { active: "게시중", pending: "게시예정", expired: "종료", nodate: "무기한" }[s];
+    }
+
+    /* ── Supabase ── */
+    async function fetchImages() {
+      try {
+        const res = await fetch(
+          `${SUPABASE_URL}/rest/v1/images?select=*&order=sort_order.asc,created_at.asc`,
+          { headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` } }
+        );
+        const data = await res.json();
+        const t = today();
+        images = (Array.isArray(data) ? data : []).filter(img => {
+          if (img.start_date && img.start_date > t) return false;
+          if (img.end_date && img.end_date < t) return false;
+          return true;
+        });
+      } catch(e) { images = []; }
+    }
+
+    async function fetchAllImages() {
+      try {
+        const res = await fetch(
+          `${SUPABASE_URL}/rest/v1/images?select=*&order=sort_order.asc,created_at.asc`,
+          { headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` } }
+        );
+        const data = await res.json();
+        return Array.isArray(data) ? data : [];
+      } catch(e) { return []; }
+    }
+
+    /* ── ★ 슬라이드 메모리 해제 함수 (핵심 수정) ── */
+    function destroySlides() {
+      // 타이머 먼저 정지
+      if (timer !== null) {
+        clearInterval(timer);
+        timer = null;
+      }
+      // 각 img 태그의 src를 빈 문자열로 비워서 브라우저가 메모리 해제하도록 유도
+      slideEls.forEach(el => {
+        el.src = "";
+        el.removeAttribute("src");
+        if (el.parentNode) el.parentNode.removeChild(el);
+      });
+      slideEls = [];
+    }
+
+    /* ── 슬라이드쇼 렌더링 ── */
+    function renderSlideshow() {
+      // ★ 이미지 목록이 바뀐 경우에만 DOM을 새로 그림 (불필요한 재생성 방지)
+      const newIds = images.map(i => i.id + ":" + i.url).join(",");
+      if (newIds === lastImageIds) return; // 변경 없으면 스킵
+      lastImageIds = newIds;
+
+      // 기존 슬라이드 완전 해제
+      destroySlides();
+
+      const noImg = document.getElementById("no-images");
+      const progressBar = document.getElementById("progress-bar");
+
+      if (images.length === 0) {
+        noImg.style.display = "flex";
+        progressBar.style.width = "0";
+        return;
+      }
+
+      noImg.style.display = "none";
+
+      images.forEach(img => {
+        const el = document.createElement("img");
+        el.className = "slide";
+        el.alt = img.name;
+        el.draggable = false;
+        // ★ src는 나중에 할당 (불필요한 선행 로딩 방지)
+        el.src = img.url;
+        document.body.insertBefore(el, document.getElementById("progress-bar"));
+        slideEls.push(el);
+      });
+
+      current = 0;
+      showSlide(0);
+
+      if (images.length > 1) {
+        timer = setInterval(() => {
+          current = (current + 1) % images.length;
+          showSlide(current);
+        }, INTERVAL);
+      }
+    }
+
+    const progressBar = document.getElementById("progress-bar");
+    function showSlide(index) {
+      slideEls.forEach(el => el.classList.remove("active"));
+      if (slideEls[index]) slideEls[index].classList.add("active");
+      progressBar.style.transition = "none";
+      progressBar.style.width = "0%";
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        progressBar.style.transition = `width ${INTERVAL}ms linear`;
+        progressBar.style.width = "100%";
+      }));
+    }
+
+    /* ── 로그인 ── */
+    document.getElementById("admin-btn").addEventListener("click", () => {
+      document.getElementById("login-modal").classList.add("open");
+      document.getElementById("pw-input").value = "";
+      document.getElementById("pw-error").textContent = "";
+      setTimeout(() => document.getElementById("pw-input").focus(), 100);
+    });
+    document.getElementById("pw-input").addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); });
+    function doLogin() {
+      if (document.getElementById("pw-input").value === ADMIN_PASSWORD) {
+        closeLogin(); openAdmin();
+      } else {
+        document.getElementById("pw-error").textContent = "비밀번호가 틀렸습니다.";
+        document.getElementById("pw-input").value = "";
+      }
+    }
+    function closeLogin() { document.getElementById("login-modal").classList.remove("open"); }
+
+    /* ── 관리자 패널 ── */
+    let adminImages = [];
+
+    async function openAdmin() {
+      document.getElementById("admin-panel").classList.add("open");
+      document.getElementById("image-list").innerHTML = '<p style="color:#6c7086;font-size:0.9rem;padding:10px 0">불러오는 중...</p>';
+      adminImages = await fetchAllImages();
+      renderImageList();
+    }
+
+    function closeAdmin() {
+      document.getElementById("admin-panel").classList.remove("open");
+      // ★ 관리자 패널 닫을 때 lastImageIds 초기화해서 강제 갱신
+      lastImageIds = "";
+      fetchImages().then(renderSlideshow);
+    }
+
+    function renderImageList() {
+      const list = document.getElementById("image-list");
+      const count = document.getElementById("img-count");
+      list.innerHTML = "";
+      count.textContent = `(${adminImages.length}장)`;
+      if (adminImages.length === 0) {
+        list.innerHTML = '<p style="color:#6c7086;font-size:0.9rem;padding:10px 0">등록된 이미지가 없습니다.</p>';
+        return;
+      }
+      adminImages.forEach((img, i) => {
+        const s = getStatus(img);
+        const item = document.createElement("div");
+        item.className = "image-item";
+        item.draggable = true;
+        item.dataset.index = i;
+
+        item.innerHTML = `
+          <span class="drag-handle" title="드래그로 순서 변경">☰</span>
+          <img src="${img.url}" alt="${img.name}"/>
+          <div class="image-info">
+            <div class="image-name" title="${img.name}">${img.name}</div>
+            <div class="image-dates">
+              <div class="date-field">
+                <span class="date-label">게시 시작일</span>
+                <input type="date" class="date-input" data-field="start_date" value="${img.start_date || ''}" onchange="updateDate(${i}, 'start_date', this.value)"/>
+              </div>
+              <div class="date-field">
+                <span class="date-label">게시 종료일 (비우면 무기한)</span>
+                <input type="date" class="date-input" data-field="end_date" value="${img.end_date || ''}" onchange="updateDate(${i}, 'end_date', this.value)"/>
+              </div>
+            </div>
+          </div>
+          <span class="status-badge status-${s}">${statusLabel(s)}</span>
+          <div class="item-actions">
+            <button class="btn btn-danger btn-sm" onclick="deleteImage(${img.id})">삭제</button>
+          </div>
+        `;
+
+        item.addEventListener("dragstart", e => {
+          dragSrcIndex = i;
+          setTimeout(() => item.classList.add("dragging"), 0);
+        });
+        item.addEventListener("dragend", () => item.classList.remove("dragging"));
+        item.addEventListener("dragover", e => { e.preventDefault(); item.classList.add("drag-over"); });
+        item.addEventListener("dragleave", () => item.classList.remove("drag-over"));
+        item.addEventListener("drop", e => {
+          e.preventDefault();
+          item.classList.remove("drag-over");
+          if (dragSrcIndex === null || dragSrcIndex === i) return;
+          const moved = adminImages.splice(dragSrcIndex, 1)[0];
+          adminImages.splice(i, 0, moved);
+          dragSrcIndex = null;
+          renderImageList();
+        });
+
+        list.appendChild(item);
+      });
+    }
+
+    function updateDate(index, field, value) {
+      adminImages[index][field] = value || null;
+      const items = document.querySelectorAll(".image-item");
+      if (items[index]) {
+        const badge = items[index].querySelector(".status-badge");
+        const s = getStatus(adminImages[index]);
+        badge.className = `status-badge status-${s}`;
+        badge.textContent = statusLabel(s);
+      }
+    }
+
+    /* ── 저장 ── */
+    async function saveAll() {
+      const msg = document.getElementById("uploading-msg");
+      msg.textContent = "저장 중...";
+      try {
+        for (let i = 0; i < adminImages.length; i++) {
+          const img = adminImages[i];
+          await fetch(`${SUPABASE_URL}/rest/v1/images?id=eq.${img.id}`, {
+            method: "PATCH",
+            headers: {
+              "apikey": SUPABASE_KEY,
+              "Authorization": `Bearer ${SUPABASE_KEY}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              sort_order: i,
+              start_date: img.start_date || null,
+              end_date: img.end_date || null
+            })
+          });
+        }
+        msg.textContent = "✅ 저장 완료!";
+        setTimeout(() => { msg.textContent = ""; }, 2000);
+      } catch(e) {
+        msg.textContent = "❌ 저장 중 오류 발생";
+      }
+    }
+
+    /* ── 삭제 ── */
+    async function deleteImage(id) {
+      const img = adminImages.find(i => i.id === id);
+      if (!confirm((img ? img.name : "이 이미지") + "을(를) 삭제할까요?")) return;
+      try {
+        await fetch(`${SUPABASE_URL}/rest/v1/images?id=eq.${id}`, {
+          method: "DELETE",
+          headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` }
+        });
+        adminImages = adminImages.filter(i => i.id !== id);
+        renderImageList();
+      } catch(e) { alert("삭제 중 오류가 발생했습니다."); }
+    }
+
+    /* ── 업로드 ── */
+    async function handleUpload(event) {
+      const files = Array.from(event.target.files);
+      const msg = document.getElementById("uploading-msg");
+      msg.textContent = `업로드 중... (0/${files.length})`;
+      let done = 0;
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("upload_preset", UPLOAD_PRESET);
+        formData.append("folder", "kiosk");
+        try {
+          const cloudRes = await fetch(
+            `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
+            { method: "POST", body: formData }
+          );
+          const cloudData = await cloudRes.json();
+          if (!cloudData.secure_url) {
+            alert(file.name + " 업로드 실패: " + (cloudData.error?.message || "오류"));
+            continue;
+          }
+          const supaRes = await fetch(`${SUPABASE_URL}/rest/v1/images`, {
+            method: "POST",
+            headers: {
+              "apikey": SUPABASE_KEY,
+              "Authorization": `Bearer ${SUPABASE_KEY}`,
+              "Content-Type": "application/json",
+              "Prefer": "return=representation"
+            },
+            body: JSON.stringify({
+              name: file.name,
+              url: cloudData.secure_url,
+              sort_order: adminImages.length,
+              start_date: today(),
+              end_date: null
+            })
+          });
+          const newImg = await supaRes.json();
+          if (Array.isArray(newImg) && newImg[0]) adminImages.push(newImg[0]);
+        } catch(e) { alert(file.name + " 처리 중 오류 발생"); }
+        done++;
+        msg.textContent = `업로드 중... (${done}/${files.length})`;
+      }
+      msg.textContent = "✅ 업로드 완료!";
+      setTimeout(() => { msg.textContent = ""; }, 2000);
+      renderImageList();
+      event.target.value = "";
+    }
+
+    /* ── 초기 실행 ── */
+    fetchImages().then(renderSlideshow);
+
+    // ★ 5분마다 이미지 목록 확인 (변경 있을 때만 DOM 갱신)
+    setInterval(() => {
+      fetchImages().then(renderSlideshow);
+    }, REFRESH_INTERVAL);
+
+    // ★ 12시간마다 페이지 자동 새로고침 (메모리 완전 초기화)
+    setTimeout(() => {
+      location.reload();
+    }, PAGE_RELOAD_INTERVAL);
+
+  </script>
+</body>
+</html>
+
+      position: absolute;
+      inset: 0;
+      width: 100%; height: 100%;
+      object-fit: contain;
+      opacity: 0;
+      transition: opacity 1.2s ease-in-out;
+    }
+    .slide.active { opacity: 1; }
+    #progress-bar {
+      position: fixed;
+      bottom: 0; left: 0;
+      height: 3px;
+      background: rgba(255,255,255,0.6);
+      width: 0%;
+      transition: width linear;
+      z-index: 10;
+    }
+    #no-images {
+      display: none;
+      position: fixed;
+      inset: 0;
+      color: #fff;
+      font-size: 1.4rem;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      line-height: 2;
+    }
+    #admin-btn {
+      position: fixed;
+      bottom: 20px; right: 20px;
+      width: 44px; height: 44px;
+      background: rgba(255,255,255,0.15);
+      border: 1.5px solid rgba(255,255,255,0.3);
+      border-radius: 50%;
+      font-size: 1.2rem;
+      cursor: pointer;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(6px);
+      transition: background 0.2s;
+    }
+    #admin-btn:hover { background: rgba(255,255,255,0.3); }
+
     /* 모달 */
     .modal-overlay {
       display: none;
